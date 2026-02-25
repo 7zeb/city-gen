@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City Map Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .city-name {
+            font-size: 1.5rem;
+            color: #00d4ff;
+            margin-bottom: 5px;
+        }
+
+        .city-population {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-size: 0.8rem;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        select, button, input {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        select, input {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        select:hover, input:hover {
+            border-color: #00d4ff;
+        }
+
+        button {
+            background: linear-gradient(135deg, #00d4ff, #7b2cbf);
+            color: #fff;
+            font-weight: bold;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.4);
+        }
+
+        .map-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .map-wrapper {
+            flex: 1;
+            min-width: 300px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        #cityMap {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .legend {
+            width: 280px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .legend h3 {
+            margin-bottom: 15px;
+            color: #00d4ff;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            transition: background 0.3s ease;
+        }
+
+        .legend-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 30px;
+            border-radius: 5px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .legend-info {
+            flex: 1;
+        }
+
+        .legend-name {
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .legend-count {
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .stats {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stats h3 {
+            margin-bottom: 15px;
+            color: #00d4ff;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .stat-value {
+            color: #00d4ff;
+            font-weight: bold;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            pointer-events: none;
+            z-index: 1000;
+            border: 1px solid #00d4ff;
+            display: none;
+        }
+
+        .tooltip h4 {
+            color: #00d4ff;
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .map-container {
+                flex-direction: column;
+            }
+            
+            .legend {
+                width: 100%;
+            }
+            
+            header h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏙️ City Map Generator</h1>
+            <div class="city-name" id="cityName">Loading...</div>
+            <div class="city-population" id="cityPopulation"></div>
+        </header>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>City Size</label>
+                <select id="sizeSelect">
+                    <option value="small">Small (50x50)</option>
+                    <option value="medium" selected>Medium (80x80)</option>
+                    <option value="large">Large (120x120)</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>City Type</label>
+                <select id="typeSelect">
+                    <option value="balanced">Balanced</option>
+                    <option value="industrial">Industrial</option>
+                    <option value="tourist">Tourist</option>
+                    <option value="tech">Tech Hub</option>
+                    <option value="port">Port City</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Density</label>
+                <select id="densitySelect">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Seed (optional)</label>
+                <input type="text" id="seedInput" placeholder="Random seed">
+            </div>
+
+            <div class="control-group">
+                <label>&nbsp;</label>
+                <button id="generateBtn">🎲 Generate New City</button>
+            </div>
+
+            <div class="control-group">
+                <label>&nbsp;</label>
+                <button id="downloadBtn">📥 Download Map</button>
+            </div>
+        </div>
+
+        <div class="map-container">
+            <div class="map-wrapper">
+                <canvas id="cityMap"></canvas>
+            </div>
+            
+            <div class="legend">
+                <h3>📍 Districts</h3>
+                <div id="legendItems"></div>
+                
+                <div class="stats">
+                    <h3>📊 City Statistics</h3>
+                    <div id="statsItems"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // Seeded random number generator
+        class SeededRandom {
+            constructor(seed) {
+                this.seed = seed || Math.random() * 999999;
+            }
+
+            next() {
+                this.seed = (this.seed * 9301 + 49297) % 233280;
+                return this.seed / 233280;
+            }
+
+            nextInt(min, max) {
+                return Math.floor(this.next() * (max - min + 1)) + min;
+            }
+
+            shuffle(array) {
+                const arr = [...array];
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(this.next() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            }
+        }
+
+        // District types with their properties
+        const DISTRICT_TYPES = {
+            downtown: {
+                name: 'Downtown',
+                color: '#4a4a8a',
+                buildingColor: '#6a6aaa',
+                icon: '🏢',
+                minSize: 8,
+                maxSize: 15,
+                priority: 1
+            },
+            residential: {
+                name: 'Residential',
+                color: '#4a8a4a',
+                buildingColor: '#6aaa6a',
+                icon: '🏠',
+                minSize: 6,
+                maxSize: 12,
+                priority: 2
+            },
+            commercial: {
+                name: 'Commercial',
+                color: '#8a6a4a',
+                buildingColor: '#aa8a6a',
+                icon: '🏪',
+                minSize: 5,
+                maxSize: 10,
+                priority: 3
+            },
+            industrial: {
+                name: 'Industrial',
+                color: '#6a6a6a',
+                buildingColor: '#8a8a8a',
+                icon: '🏭',
+                minSize: 8,
+                maxSize: 14,
+                priority: 4
+            },
+            airport: {
+                name: 'Airport',
+                color: '#3a3a5a',
+                buildingColor: '#5a5a7a',
+                icon: '✈️',
+                minSize: 12,
+                maxSize: 18,
+                priority: 5,
+                unique: true
+            },
+            park: {
+                name: 'Park',
+                color: '#2a6a2a',
+                buildingColor: '#3a8a3a',
+                icon: '🌳',
+                minSize: 4,
+                maxSize: 10,
+                priority: 6
+            },
+            university: {
+                name: 'University',
+                color: '#6a4a6a',
+                buildingColor: '#8a6a8a',
+                icon: '🎓',
+                minSize: 6,
+                maxSize: 10,
+                priority: 7,
+                unique: true
+            },
+            hospital: {
+                name: 'Hospital Zone',
+                color: '#8a4a4a',
+                buildingColor: '#aa6a6a',
+                icon: '🏥',
+                minSize: 4,
+                maxSize: 8,
+                priority: 8
+            },
+            port: {
+                name: 'Port',
+                color: '#4a6a8a',
+                buildingColor: '#6a8aaa',
+                icon: '⚓',
+                minSize: 8,
+                maxSize: 14,
+                priority: 9,
+                unique: true,
+                requiresWater: true
+            },
+            stadium: {
+                name: 'Stadium',
+                color: '#7a5a3a',
+                buildingColor: '#9a7a5a',
+                icon: '🏟️',
+                minSize: 5,
+                maxSize: 8,
+                priority: 10,
+                unique: true
+            },
+            tech: {
+                name: 'Tech Park',
+                color: '#3a7a8a',
+                buildingColor: '#5a9aaa',
+                icon: '💻',
+                minSize: 6,
+                maxSize: 12,
+                priority: 11
+            },
+            historic: {
+                name: 'Historic District',
+                color: '#8a7a5a',
+                buildingColor: '#aa9a7a',
+                icon: '🏛️',
+                minSize: 5,
+                maxSize: 9,
+                priority: 12
+            },
+            suburb: {
+                name: 'Suburbs',
+                color: '#5a9a5a',
+                buildingColor: '#7aba7a',
+                icon: '🏡',
+                minSize: 8,
+                maxSize: 15,
+                priority: 13
+            },
+            water: {
+                name: 'Water',
+                color: '#2a4a6a',
+                buildingColor: '#2a4a6a',
+                icon: '🌊',
+                minSize: 10,
+                maxSize: 25,
+                priority: 0,
+                isNatural: true
+            }
+        };
+
+        // City name generator
+        const cityPrefixes = ['New', 'San', 'Los', 'Las', 'El', 'Port', 'Fort', 'Saint', 'North', 'South', 'East', 'West', 'Grand', 'Royal', 'Golden'];
+        const cityRoots = ['York', 'Angeles', 'Francisco', 'Diego', 'Antonio', 'Jose', 'Haven', 'Wood', 'Field', 'Ridge', 'Valley', 'Creek', 'Brook', 'Lake', 'Hill', 'Dale', 'Mont', 'Vista', 'Mesa', 'Alto', 'Verde', 'Bella', 'Rosa', 'Terra', 'Nova', 'Luna', 'Sol', 'Mar', 'Rio', 'Costa'];
+        const citySuffixes = ['ton', 'ville', 'burg', 'berg', 'ford', 'port', 'land', 'wood', 'field', 'view', 'side', 'dale', 'worth', 'shire', 'ham', 'stead', '', '', ''];
+
+        class CityGenerator {
+            constructor(options = {}) {
+                this.sizes = {
+                    small: 50,
+                    medium: 80,
+                    large: 120
+                };
+                
+                this.size = this.sizes[options.size] || this.sizes.medium;
+                this.type = options.type || 'balanced';
+                this.density = options.density || 'medium';
+                this.seed = options.seed || Math.floor(Math.random() * 999999);
+                this.random = new SeededRandom(this.seed);
+                
+                this.grid = [];
+                this.districts = [];
+                this.roads = [];
+                this.stats = {};
+                
+                this.cityName = this.generateCityName();
+            }
+
+            generateCityName() {
+                const usePrefix = this.random.next() > 0.5;
+                const useSuffix = this.random.next() > 0.3;
+                
+                let name = '';
+                
+                if (usePrefix) {
+                    name += cityPrefixes[this.random.nextInt(0, cityPrefixes.length - 1)] + ' ';
+                }
+                
+                name += cityRoots[this.random.nextInt(0, cityRoots.length - 1)];
+                
+                if (useSuffix && !usePrefix) {
+                    name += citySuffixes[this.random.nextInt(0, citySuffixes.length - 1)];
+                }
+                
+                return name;
+            }
+
+            generate() {
+                // Initialize grid
+                this.initializeGrid();
+                
+                // Generate water bodies (if applicable)
+                this.generateWaterBodies();
+                
+                // Generate main roads
+                this.generateMainRoads();
+                
+                // Place downtown first (city center)
+                this.placeDowntown();
+                
+                // Generate districts based on city type
+                this.generateDistricts();
+                
+                // Fill remaining space with suburbs/residential
+                this.fillEmptySpace();
+                
+                // Generate secondary roads
+                this.generateSecondaryRoads();
+                
+                // Calculate statistics
+                this.calculateStats();
+                
+                return this;
+            }
+
+            initializeGrid() {
+                this.grid = [];
+                for (let y = 0; y < this.size; y++) {
+                    this.grid[y] = [];
+                    for (let x = 0; x < this.size; x++) {
+                        this.grid[y][x] = {
+                            type: null,
+                            districtId: null,
+                            isRoad: false,
+                            isMainRoad: false,
+                            building: null
+                        };
+                    }
+                }
+            }
+
+            generateWaterBodies() {
+                const hasWater = this.type === 'port' || this.random.next() > 0.4;
+                
+                if (!hasWater) return;
+                
+                const waterType = this.random.next();
+                
+                if (this.type === 'port' || waterType < 0.4) {
+                    // Coastal city - water on one edge
+                    const edge = this.random.nextInt(0, 3);
+                    const waterDepth = this.random.nextInt(8, 15);
+                    
+                    for (let y = 0; y < this.size; y++) {
+                        for (let x = 0; x < this.size; x++) {
+                            let isWater = false;
+                            const variance = Math.sin((edge % 2 === 0 ? y : x) * 0.2) * 3;
+                            
+                            switch (edge) {
+                                case 0: isWater = x < waterDepth + variance; break;
+                                case 1: isWater = x > this.size - waterDepth - 1 + variance; break;
+                                case 2: isWater = y < waterDepth + variance; break;
+                                case 3: isWater = y > this.size - waterDepth - 1 + variance; break;
+                            }
+                            
+                            if (isWater) {
+                                this.grid[y][x].type = 'water';
+                                this.grid[y][x].districtId = 'water';
+                            }
+                        }
+                    }
+                } else if (waterType < 0.7) {
+                    // River through city
+                    const startX = this.random.nextInt(0, this.size - 1);
+                    let currentX = startX;
+                    const riverWidth = this.random.nextInt(2, 4);
+                    
+                    for (let y = 0; y < this.size; y++) {
+                        currentX += this.random.nextInt(-2, 2);
+                        currentX = Math.max(riverWidth, Math.min(this.size - riverWidth - 1, currentX));
+                        
+                        for (let dx = -riverWidth; dx <= riverWidth; dx++) {
+                            const x = currentX + dx;
+                            if (x >= 0 && x < this.size) {
+                                this.grid[y][x].type = 'water';
+                                this.grid[y][x].districtId = 'water';
+                            }
+                        }
+                    }
+                } else {
+                    // Lake
+                    const centerX = this.random.nextInt(this.size * 0.2, this.size * 0.8);
+                    const centerY = this.random.nextInt(this.size * 0.2, this.size * 0.8);
+                    const radiusX = this.random.nextInt(5, 12);
+                    const radiusY = this.random.nextInt(5, 12);
+                    
+                    for (let y = 0; y < this.size; y++) {
+                        for (let x = 0; x < this.size; x++) {
+                            const dx = (x - centerX) / radiusX;
+                            const dy = (y - centerY) / radiusY;
+                            const noise = (Math.sin(x * 0.5) + Math.cos(y * 0.5)) * 0.2;
+                            
+                            if (dx * dx + dy * dy + noise < 1) {
+                                this.grid[y][x].type = 'water';
+                                this.grid[y][x].districtId = 'water';
+                            }
+                        }
+                    }
+                }
+            }
+
+            generateMainRoads() {
+                // Create main arterial roads
+                const numHorizontal = this.random.nextInt(2, 4);
+                const numVertical = this.random.nextInt(2, 4);
+                
+                // Horizontal roads
+                for (let i = 0; i < numHorizontal; i++) {
+                    const y = Math.floor(this.size * (i + 1) / (numHorizontal + 1));
+                    for (let x = 0; x < this.size; x++) {
+                        if (!this.grid[y][x].type) {
+                            this.grid[y][x].isRoad = true;
+                            this.grid[y][x].isMainRoad = true;
+                        }
+                        if (y + 1 < this.size && !this.grid[y + 1][x].type) {
+                            this.grid[y + 1][x].isRoad = true;
+                            this.grid[y + 1][x].isMainRoad = true;
+                        }
+                    }
+                }
+                
+                // Vertical roads
+                for (let i = 0; i < numVertical; i++) {
+                    const x = Math.floor(this.size * (i + 1) / (numVertical + 1));
+                    for (let y = 0; y < this.size; y++) {
+                        if (!this.grid[y][x].type) {
+                            this.grid[y][x].isRoad = true;
+                            this.grid[y][x].isMainRoad = true;
+                        }
+                        if (x + 1 < this.size && !this.grid[y][x + 1].type) {
+                            this.grid[y][x + 1].isRoad = true;
+                            this.grid[y][x + 1].isMainRoad = true;
+                        }
+                    }
+                }
+            }
+
+            placeDowntown() {
+                // Find city center (avoiding water)
+                let centerX = Math.floor(this.size / 2);
+                let centerY = Math.floor(this.size / 2);
+                
+                // Adjust if center is water
+                for (let radius = 0; radius < this.size / 2; radius++) {
+                    for (let dy = -radius; dy <= radius; dy++) {
+                        for (let dx = -radius; dx <= radius; dx++) {
+                            const x = centerX + dx;
+                            const y = centerY + dy;
+                            if (this.isValidPosition(x, y) && !this.grid[y][x].type) {
+                                centerX = x;
+                                centerY = y;
+                                radius = this.size; // Break out
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                const district = DISTRICT_TYPES.downtown;
+                const size = this.random.nextInt(district.minSize, district.maxSize);
+                
+                this.placeDistrict('downtown', centerX - Math.floor(size / 2), centerY - Math.floor(size / 2), size, size);
+            }
+
+            generateDistricts() {
+                const districtConfigs = this.getDistrictConfig();
+                
+                for (const config of districtConfigs) {
+                    for (let i = 0; i < config.count; i++) {
+                        this.tryPlaceDistrict(config.type);
+                    }
+                }
+            }
+
+            getDistrictConfig() {
+                const densityMultiplier = {
+                    low: 0.6,
+                    medium: 1,
+                    high: 1.5
+                }[this.density];
+
+                const baseConfigs = {
+                    balanced: [
+                        { type: 'residential', count: Math.floor(4 * densityMultiplier) },
+                        { type: 'commercial', count: Math.floor(3 * densityMultiplier) },
+                        { type: 'industrial', count: Math.floor(2 * densityMultiplier) },
+                        { type: 'park', count: Math.floor(3 * densityMultiplier) },
+                        { type: 'airport', count: 1 },
+                        { type: 'university', count: 1 },
+                        { type: 'hospital', count: Math.floor(2 * densityMultiplier) },
+                        { type: 'stadium', count: 1 },
+                        { type: 'suburb', count: Math.floor(3 * densityMultiplier) }
+                    ],
+                    industrial: [
+                        { type: 'industrial', count: Math.floor(5 * densityMultiplier) },
+                        { type: 'residential', count: Math.floor(3 * densityMultiplier) },
+                        { type: 'commercial', count: Math.floor(2 * densityMultiplier) },
+                        { type: 'park', count: Math.floor(2 * densityMultiplier) },
+                        { type: 'airport', count: 1 },
+                        { type: 'port', count: 1 },
+                        { type: 'suburb', count: Math.floor(2 * densityMultiplier) }
+                    ],
+                    tourist: [
+                        { type: 'commercial', count: Math.floor(4 * densityMultiplier) },
+                        { type: 'historic', count: Math.floor(3 * densityMultiplier) },
+                        { type: 'park', count: Math.floor(4 * densityMultiplier) },
+                        { type: 'residential', count: Math.floor(2 * densityMultiplier) },
+                        { type: 'airport', count: 1 },
+                        { type: 'stadium', count: 1 },
+                        { type: 'university', count: 1 }
+                    ],
+                    tech: [
+                        { type: 'tech', count: Math.floor(4 * densityMultiplier) },
+                        { type: 'university', count: 1 },
+                        { type: 'residential', count: Math.floor(3 * densityMultiplier) },
+                        { type: 'commercial', count: Math.floor(3 * densityMultiplier) },
+                        { type: 'park', count: Math.floor(3 * densityMultiplier) },
+                        { type: 'airport', count: 1 },
+                        { type: 'hospital', count: 1 }
+                    ],
+                    port: [
+                        { type: 'port', count: 1 },
+                        { type: 'industrial', count: Math.floor(3 * densityMultiplier) },
+                        { type: 'commercial', count: Math.floor(3 * densityMultiplier) },
+                        { type: 'residential', count: Math.floor(3 * densityMultiplier) },
+                        { type: 'airport', count: 1 },
+                        { type: 'park', count: Math.floor(2 * densityMultiplier) }
+                    ]
+                };
+
+                return baseConfigs[this.type] || baseConfigs.balanced;
+            }
+
+            tryPlaceDistrict(type, attempts = 50) {
+                const district = DISTRICT_TYPES[type];
+                
+                for (let attempt = 0; attempt < attempts; attempt++) {
+                    const width = this.random.nextInt(district.minSize, district.maxSize);
+                    const height = this.random.nextInt(district.minSize, district.maxSize);
+                    
+                    let x, y;
+                    
+                    if (district.requiresWater) {
+                        // Place near water
+                        const waterEdge = this.findWaterEdge();
+                        if (!waterEdge) continue;
+                        x = waterEdge.x;
+                        y = waterEdge.y;
+                    } else {
+                        x = this.random.nextInt(0, this.size - width);
+                        y = this.random.nextInt(0, this.size - height);
+                    }
+                    
+                    if (this.canPlaceDistrict(x, y, width, height)) {
+                        this.placeDistrict(type, x, y, width, height);
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            findWaterEdge() {
+                const edges = [];
+                
+                for (let y = 0; y < this.size; y++) {
+                    for (let x = 0; x < this.size; x++) {
+                        if (this.grid[y][x].type === 'water') {
+                            // Check adjacent cells
+                            const neighbors = [
+                                { x: x - 1, y },
+                                { x: x + 1, y },
+                                { x, y: y - 1 },
+                                { x, y: y + 1 }
+                            ];
+                            
+                            for (const n of neighbors) {
+                                if (this.isValidPosition(n.x, n.y) && !this.grid[n.y][n.x].type) {
+                                    edges.push(n);
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if (edges.length === 0) return null;
+                return edges[this.random.nextInt(0, edges.length - 1)];
+            }
+
+            canPlaceDistrict(x, y, width, height) {
+                for (let dy = 0; dy < height; dy++) {
+                    for (let dx = 0; dx < width; dx++) {
+                        const px = x + dx;
+                        const py = y + dy;
+                        
+                        if (!this.isValidPosition(px, py)) return false;
+                        if (this.grid[py][px].type) return false;
+                        if (this.grid[py][px].isMainRoad) return false;
+                    }
+                }
+                return true;
+            }
+
+            placeDistrict(type, x, y, width, height) {
+                const districtId = `${type}_${this.districts.length}`;
+                
+                for (let dy = 0; dy < height; dy++) {
+                    for (let dx = 0; dx < width; dx++) {
+                        const px = x + dx;
+                        const py = y + dy;
+                        
+                        if (this.isValidPosition(px, py) && !this.grid[py][px].type) {
+                            this.grid[py][px].type = type;
+                            this.grid[py][px].districtId = districtId;
+                            
+                            // Add buildings
+                            if (this.random.next() > 0.3) {
+                                this.grid[py][px].building = {
+                                    height: this.random.nextInt(1, type === 'downtown' ? 5 : 3),
+                                    type: type
+                                };
+                            }
+                        }
+                    }
+                }
+                
+                this.districts.push({
+                    id: districtId,
+                    type,
+                    x, y, width, height,
+                    name: this.generateDistrictName(type)
+                });
+            }
+
+            generateDistrictName(type) {
+                const prefixes = ['North', 'South', 'East', 'West', 'Old', 'New', 'Upper', 'Lower', 'Central', 'Greater'];
+                const names = ['Oak', 'Maple', 'Pine', 'Cedar', 'River', 'Lake', 'Hill', 'Valley', 'Green', 'Stone', 'Silver', 'Golden', 'Crystal', 'Royal', 'Grand'];
+                const suffixes = {
+                    downtown: ['Center', 'Square', 'Plaza', 'District'],
+                    residential: ['Heights', 'Gardens', 'Estates', 'Village'],
+                    commercial: ['Market', 'Exchange', 'Quarter', 'Row'],
+                    industrial: ['Works', 'Factory District', 'Mills', 'Zone'],
+                    airport: ['International Airport', 'Regional Airport', 'Airfield'],
+                    park: ['Park', 'Gardens', 'Green', 'Commons'],
+                    university: ['University', 'College', 'Institute', 'Academy'],
+                    hospital: ['Medical Center', 'Health District', 'Hospital Zone'],
+                    port: ['Harbor', 'Docks', 'Marina', 'Waterfront'],
+                    stadium: ['Arena', 'Stadium', 'Sports Complex'],
+                    tech: ['Tech Park', 'Innovation Hub', 'Technology Center'],
+                    historic: ['Old Town', 'Heritage District', 'Historic Quarter'],
+                    suburb: ['Suburbs', 'Meadows', 'Grove', 'Crossing']
+                };
+
+                const prefix = this.random.next() > 0.5 ? prefixes[this.random.nextInt(0, prefixes.length - 1)] + ' ' : '';
+                const name = names[this.random.nextInt(0, names.length - 1)];
+                const suffix = suffixes[type] ? suffixes[type][this.random.nextInt(0, suffixes[type].length - 1)] : 'District';
+
+                return `${prefix}${name} ${suffix}`;
+            }
+
+            fillEmptySpace() {
+                for (let y = 0; y < this.size; y++) {
+                    for (let x = 0; x < this.size; x++) {
+                        if (!this.grid[y][x].type && !this.grid[y][x].isRoad) {
+                            // Determine what to fill with based on surroundings
+                            const nearbyTypes = this.getNearbyTypes(x, y, 5);
+                            
+                            if (nearbyTypes.downtown > 0) {
+                                this.grid[y][x].type = 'commercial';
+                            } else if (nearbyTypes.industrial > 3) {
+                                this.grid[y][x].type = 'industrial';
+                            } else if (this.random.next() > 0.7) {
+                                this.grid[y][x].type = 'park';
+                            } else {
+                                this.grid[y][x].type = 'suburb';
+                            }
+                            
+                            if (this.random.next() > 0.4) {
+                                this.grid[y][x].building = {
+                                    height: 1,
+                                    type: this.grid[y][x].type
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+
+            getNearbyTypes(x, y, radius) {
+                const types = {};
+                
+                for (let dy = -radius; dy <= radius; dy++) {
+                    for (let dx = -radius; dx <= radius; dx++) {
+                        const px = x + dx;
+                        const py = y + dy;
+                        
+                        if (this.isValidPosition(px, py) && this.grid[py][px].type) {
+                            const type = this.grid[py][px].type;
+                            types[type] = (types[type] || 0) + 1;
+                        }
+                    }
+                }
+                
+                return types;
+            }
+
+            generateSecondaryRoads() {
+                const roadSpacing = {
+                    low: 8,
+                    medium: 6,
+                    high: 4
+                }[this.density];
+
+                // Grid-based secondary roads
+                for (let y = 0; y < this.size; y += roadSpacing) {
+                    for (let x = 0; x < this.size; x++) {
+                        if (this.grid[y][x].type && this.grid[y][x].type !== 'water' && 
+                            this.grid[y][x].type !== 'airport' && !this.grid[y][x].isMainRoad) {
+                            this.grid[y][x].isRoad = true;
+                        }
+                    }
+                }
+                
+                for (let x = 0; x < this.size; x += roadSpacing) {
+                    for (let y = 0; y < this.size; y++) {
+                        if (this.grid[y][x].type && this.grid[y][x].type !== 'water' && 
+                            this.grid[y][x].type !== 'airport' && !this.grid[y][x].isMainRoad) {
+                            this.grid[y][x].isRoad = true;
+                        }
+                    }
+                }
+            }
+
+            isValidPosition(x, y) {
+                return x >= 0 && x < this.size && y >= 0 && y < this.size;
+            }
+
+            calculateStats() {
+                const typeCounts = {};
+                let totalCells = 0;
+                let roadCells = 0;
+                let buildingCells = 0;
+
+                for (let y = 0; y < this.size; y++) {
+                    for (let x = 0; x < this.size; x++) {
+                        const cell = this.grid[y][x];
+                        totalCells++;
+                        
+                        if (cell.isRoad) roadCells++;
+                        if (cell.building) buildingCells++;
+                        
+                        if (cell.type) {
+                            typeCounts[cell.type] = (typeCounts[cell.type] || 0) + 1;
+                        }
+                    }
+                }
+
+                // Calculate population (rough estimate)
+                const residentialArea = (typeCounts.residential || 0) + (typeCounts.suburb || 0);
+                const populationDensity = { low: 50, medium: 100, high: 200 }[this.density];
+                const population = residentialArea * populationDensity;
+
+                this.stats = {
+                    totalArea: totalCells,
+                    roadNetwork: roadCells,
+                    buildings: buildingCells,
+                    districts: this.districts.length,
+                    population: population,
+                    typeCounts
+                };
+            }
+        }
+
+        class CityRenderer {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+            }
+
+            render(city) {
+                const cellSize = Math.min(800, window.innerWidth - 360) / city.size;
+                this.canvas.width = city.size * cellSize;
+                this.canvas.height = city.size * cellSize;
+                
+                this.cellSize = cellSize;
+                this.city = city;
+
+                // Clear canvas
+                this.ctx.fillStyle = '#1a1a2e';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Draw districts
+                this.drawDistricts(city);
+
+                // Draw roads
+                this.drawRoads(city);
+
+                // Draw buildings
+                this.drawBuildings(city);
+
+                // Draw special features
+                this.drawSpecialFeatures(city);
+            }
+
+            drawDistricts(city) {
+                for (let y = 0; y < city.size; y++) {
+                    for (let x = 0; x < city.size; x++) {
+                        const cell = city.grid[y][x];
+                        if (cell.type && !cell.isRoad) {
+                            const district = DISTRICT_TYPES[cell.type];
+                            this.ctx.fillStyle = district.color;
+                            this.ctx.fillRect(
+                                x * this.cellSize,
+                                y * this.cellSize,
+                                this.cellSize,
+                                this.cellSize
+                            );
+                        }
+                    }
+                }
+            }
+
+            drawRoads(city) {
+                for (let y = 0; y < city.size; y++) {
+                    for (let x = 0; x < city.size; x++) {
+                        const cell = city.grid[y][x];
+                        if (cell.isRoad && cell.type !== 'water') {
+                            this.ctx.fillStyle = cell.isMainRoad ? '#3a3a3a' : '#2a2a2a';
+                            this.ctx.fillRect(
+                                x * this.cellSize,
+                                y * this.cellSize,
+                                this.cellSize,
+                                this.cellSize
+                            );
+                            
+                            // Road markings for main roads
+                            if (cell.isMainRoad && this.cellSize > 3) {
+                                this.ctx.fillStyle = '#ffff00';
+                                this.ctx.fillRect(
+                                    x * this.cellSize + this.cellSize * 0.45,
+                                    y * this.cellSize,
+                                    this.cellSize * 0.1,
+                                    this.cellSize
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            drawBuildings(city) {
+                for (let y = 0; y < city.size; y++) {
+                    for (let x = 0; x < city.size; x++) {
+                        const cell = city.grid[y][x];
+                        if (cell.building && !cell.isRoad) {
+                            const district = DISTRICT_TYPES[cell.type];
+                            const height = cell.building.height;
+                            
+                            // Building shadow
+                            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                            this.ctx.fillRect(
+                                x * this.cellSize + this.cellSize * 0.15 + height,
+                                y * this.cellSize + this.cellSize * 0.15 + height,
+                                this.cellSize * 0.7,
+                                this.cellSize * 0.7
+                            );
+                            
+                            // Building
+                            this.ctx.fillStyle = district.buildingColor;
+                            this.ctx.fillRect(
+                                x * this.cellSize + this.cellSize * 0.15,
+                                y * this.cellSize + this.cellSize * 0.15,
+                                this.cellSize * 0.7,
+                                this.cellSize * 0.7
+                            );
+                            
+                            // Building highlight
+                            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                            this.ctx.fillRect(
+                                x * this.cellSize + this.cellSize * 0.15,
+                                y * this.cellSize + this.cellSize * 0.15,
+                                this.cellSize * 0.35,
+                                this.cellSize * 0.7
+                            );
+                        }
+                    }
+                }
+            }
+
+            drawSpecialFeatures(city) {
+                // Draw water effects
+                for (let y = 0; y < city.size; y++) {
+                    for (let x = 0; x < city.size; x++) {
+                        const cell = city.grid[y][x];
+                        if (cell.type === 'water') {
+                            // Water waves
+                            this.ctx.fillStyle = 'rgba(100, 150, 200, 0.3)';
+                            const waveOffset = Math.sin((x + y) * 0.5) * 2;
+                            this.ctx.beginPath();
+                            this.ctx.arc(
+                                x * this.cellSize + this.cellSize / 2 + waveOffset,
+                                y * this.cellSize + this.cellSize / 2,
+                                this.cellSize * 0.3,
+                                0,
+                                Math.PI * 2
+                            );
+                            this.ctx.fill();
+                        }
+                        
+                        // Airport runways
+                        if (cell.type === 'airport' && this.cellSize > 2) {
+                            if ((x + y) % 4 === 0) {
+                                this.ctx.fillStyle = '#555';
+                                this.ctx.fillRect(
+                                    x * this.cellSize + this.cellSize * 0.3,
+                                    y * this.cellSize + this.cellSize * 0.4,
+                                    this.cellSize * 0.4,
+                                    this.cellSize * 0.2
+                                );
+                            }
+                        }
+                        
+                        // Park trees
+                        if (cell.type === 'park' && !cell.isRoad && this.cellSize > 3) {
+                            if (Math.random() > 0.6) {
+                                this.ctx.fillStyle = '#1a5a1a';
+                                this.ctx.beginPath();
+                                this.ctx.arc(
+                                    x * this.cellSize + this.cellSize / 2,
+                                    y * this.cellSize + this.cellSize / 2,
+                                    this.cellSize * 0.3,
+                                    0,
+                                    Math.PI * 2
+                                );
+                                this.ctx.fill();
+                            }
+                        }
+                    }
+                }
+
+                // Draw district labels for larger maps
+                if (this.cellSize > 4) {
+                    this.ctx.font = `${Math.max(10, this.cellSize * 1.5)}px Arial`;
+                    this.ctx.textAlign = 'center';
+                    this.ctx.textBaseline = 'middle';
+                    
+                    for (const district of city.districts) {
+                        const centerX = (district.x + district.width / 2) * this.cellSize;
+                        const centerY = (district.y + district.height / 2) * this.cellSize;
+                        
+                        const districtType = DISTRICT_TYPES[district.type];
+                        
+                        // Icon
+                        this.ctx.font = `${Math.max(12, this.cellSize * 2)}px Arial`;
+                        this.ctx.fillText(districtType.icon, centerX, centerY);
+                    }
+                }
+            }
+
+            getCellAt(x, y) {
+                const cellX = Math.floor(x / this.cellSize);
+                const cellY = Math.floor(y / this.cellSize);
+                
+                if (cellX >= 0 && cellX < this.city.size && cellY >= 0 && cellY < this.city.size) {
+                    return {
+                        cell: this.city.grid[cellY][cellX],
+                        x: cellX,
+                        y: cellY
+                    };
+                }
+                return null;
+            }
+        }
+
+        // UI Controller
+        class UIController {
+            constructor() {
+                this.canvas = document.getElementById('cityMap');
+                this.renderer = new CityRenderer(this.canvas);
+                this.city = null;
+                
+                this.setupEventListeners();
+                this.generateCity();
+            }
+
+            setupEventListeners() {
+                document.getElementById('generateBtn').addEventListener('click', () => this.generateCity());
+                document.getElementById('downloadBtn').addEventListener('click', () => this.downloadMap());
+                
+                // Tooltip
+                this.canvas.addEventListener('mousemove', (e) => this.showTooltip(e));
+                this.canvas.addEventListener('mouseleave', () => this.hideTooltip());
+            }
+
+            generateCity() {
+                const options = {
+                    size: document.getElementById('sizeSelect').value,
+                    type: document.getElementById('typeSelect').value,
+                    density: document.getElementById('densitySelect').value,
+                    seed: document.getElementById('seedInput').value || undefined
+                };
+
+                this.city = new CityGenerator(options).generate();
+                this.renderer.render(this.city);
+                this.updateUI();
+            }
+
+            updateUI() {
+                // Update city name
+                document.getElementById('cityName').textContent = this.city.cityName;
+                document.getElementById('cityPopulation').textContent = 
+                    `Population: ${this.city.stats.population.toLocaleString()} | Seed: ${this.city.seed}`;
+
+                // Update legend
+                const legendContainer = document.getElementById('legendItems');
+                legendContainer.innerHTML = '';
+
+                const typeCounts = this.city.stats.typeCounts;
+                
+                for (const [type, count] of Object.entries(typeCounts)) {
+                    const district = DISTRICT_TYPES[type];
+                    if (!district) continue;
+                    
+                    const item = document.createElement('div');
+                    item.className = 'legend-item';
+                    item.innerHTML = `
+                        <div class="legend-color" style="background: ${district.color}"></div>
+                        <div class="legend-info">
+                            <div class="legend-name">${district.icon} ${district.name}</div>
+                            <div class="legend-count">${count} cells</div>
+                        </div>
+                    `;
+                    legendContainer.appendChild(item);
+                }
+
+                // Update stats
+                const statsContainer = document.getElementById('statsItems');
+                statsContainer.innerHTML = `
+                    <div class="stat-item">
+                        <span>Total Area</span>
+                        <span class="stat-value">${this.city.stats.totalArea.toLocaleString()} cells</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Districts</span>
+                        <span class="stat-value">${this.city.stats.districts}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Road Network</span>
+                        <span class="stat-value">${this.city.stats.roadNetwork.toLocaleString()} cells</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Buildings</span>
+                        <span class="stat-value">${this.city.stats.buildings.toLocaleString()}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>City Type</span>
+                        <span class="stat-value">${this.city.type.charAt(0).toUpperCase() + this.city.type.slice(1)}</span>
+                    </div>
+                `;
+            }
+
+            showTooltip(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const cellInfo = this.renderer.getCellAt(x, y);
+                
+                if (cellInfo && cellInfo.cell.type) {
+                    const district = DISTRICT_TYPES[cellInfo.cell.type];
+                    const districtData = this.city.districts.find(d => d.id === cellInfo.cell.districtId);
+                    
+                    const tooltip = document.getElementById('tooltip');
+                    tooltip.innerHTML = `
+                        <h4>${district.icon} ${district.name}</h4>
+                        ${districtData ? `<div>${districtData.name}</div>` : ''}
+                        <div>Position: (${cellInfo.x}, ${cellInfo.y})</div>
+                        ${cellInfo.cell.building ? `<div>Building Height: ${cellInfo.cell.building.height}</div>` : ''}
+                        ${cellInfo.cell.isRoad ? '<div>🛣️ Road</div>' : ''}
+                    `;
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = (e.clientX + 15) + 'px';
+                    tooltip.style.top = (e.clientY + 15) + 'px';
+                } else {
+                    this.hideTooltip();
+                }
+            }
+
+            hideTooltip() {
+                document.getElementById('tooltip').style.display = 'none';
+            }
+
+            downloadMap() {
+                const link = document.createElement('a');
+                link.download = `${this.city.cityName.replace(/\s+/g, '_')}_map.png`;
+                link.href = this.canvas.toDataURL('image/png');
+                link.click();
+            }
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            new UIController();
+        });
+    </script>
+</body>
+</html>
